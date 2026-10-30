@@ -36,8 +36,8 @@
   </table>
 
   <script>
-    const repoOwner = 'CY83R-3X71NC710N'; // Replace with the repository owner
-    const repoName = 'PR-Dashboard'; // Replace with the repository name
+    const repoOwner = 'Epsilon0xCell'; // The account this repo now lives under
+    const repoName = 'PR-Dashboard';
 
     // Fetch pull requests (both open and closed) from the GitHub API
     fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/pulls?state=all`)
@@ -45,17 +45,34 @@
       .then(pullRequests => {
         const tableBody = document.querySelector('#pullRequestsTable tbody');
 
-        // Iterate over the pull requests and create rows for the table
         pullRequests.forEach(pullRequest => {
           const row = document.createElement('tr');
-          row.innerHTML = `
-            <td>${pullRequest.number}</td>
-            <td>${pullRequest.title}</td>
-            <td>${pullRequest.user.login}</td>
-            <td>${new Date(pullRequest.created_at).toLocaleString()}</td>
-            <td>${pullRequest.state}</td>
-            <td><a href="${pullRequest.html_url}" target="_blank">Link</a></td>
-          `;
+          // Cells are filled with textContent, never innerHTML. A pull
+          // request title is text anyone on GitHub can choose, and this
+          // page's own workflow opens pull requests automatically, so
+          // building rows as HTML strings would let a crafted title inject
+          // markup into the dashboard. The link cell is the one place an
+          // element is built, and its href comes from the API response.
+          const cells = [
+            pullRequest.number,
+            pullRequest.title,
+            pullRequest.user.login,
+            new Date(pullRequest.created_at).toLocaleString(),
+            pullRequest.state,
+          ];
+          cells.forEach(text => {
+            const td = document.createElement('td');
+            td.textContent = text;
+            row.appendChild(td);
+          });
+          const linkCell = document.createElement('td');
+          const link = document.createElement('a');
+          link.href = pullRequest.html_url;
+          link.target = '_blank';
+          link.rel = 'noopener';
+          link.textContent = 'Link';
+          linkCell.appendChild(link);
+          row.appendChild(linkCell);
           tableBody.appendChild(row);
         });
       })
