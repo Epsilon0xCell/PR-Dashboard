@@ -21,15 +21,18 @@ import time
 import requests
 
 API = "https://api.github.com"
-MAX_PAGES = 10  # at the API's default page size, the newest 300 PRs
+# I cap the walk at 10 pages. At the default page size that gives me
+# the newest 300 pull requests, and it stops a huge repo from burning
+# the whole unauthenticated rate budget on one export.
+MAX_PAGES = 10
 
 
 def _raise_for_status(response, url):
     if response.status_code == 200:
         return
-    # Error responses are JSON with a message, not a list. Raise with that
-    # message instead of letting the caller iterate an error dict and fail
-    # later with a confusing type error.
+    # I raise with the message from the error body because that body is
+    # a dict, not a list. If I let the caller iterate it, the export
+    # fails later with a type error that hides the real API problem.
     try:
         message = response.json().get("message", "")
     except ValueError:
@@ -40,6 +43,8 @@ def _raise_for_status(response, url):
 
 
 def _get(url):
+    # I set a timeout here and in the page walk below. Without one a
+    # stalled connection would hang the export with no error at all.
     response = requests.get(url, timeout=30)
     _raise_for_status(response, url)
     return response
@@ -50,21 +55,31 @@ def get_pull_requests(repo):
     page = 1
     while page <= MAX_PAGES:
         url = f"{API}/repos/{repo}/pulls?page={page}"
+        # I call requests.get directly here instead of my _get helper
+        # because I have to read the rate limit headers before I decide
+        # if this response is an error worth raising on.
         response = requests.get(url, timeout=30)
-        # .get with a default: an error page or a proxy can strip these
-        # headers, and a KeyError here used to kill the whole export.
+        # I read the header with .get and a default because an error
+        # page or a proxy can strip it. A KeyError here used to kill the
+        # whole export over a header I only need for one check.
         remaining = int(response.headers.get("X-RateLimit-Remaining", "1"))
         if response.status_code in (403, 429) and remaining == 0:
-            # Rate limiting arrives as an error status, so it has to be
-            # handled here, before _get turns non-200 responses into
-            # exceptions. Wait for the reset and retry the same page.
+            # I handle the rate limit here, before _raise_for_status
+            # sees it. The limit arrives as an error status, so if I
+            # raised first I would never get the chance to wait. I
+            # retry the same page after the reset instead of skipping
+            # it, or that page of pull requests would just be missing.
             reset_time = int(response.headers.get("X-RateLimit-Reset", "0"))
+            # I add one second past the reset and I never wait less
+            # than one second, even if the reset time is already past.
             wait_time = max(reset_time - int(time.time()) + 1, 1)
             print(f"API rate limit exceeded. Waiting for {wait_time} seconds.")
             time.sleep(wait_time)
             continue
         _raise_for_status(response, url)
         data = response.json()
+        # An empty page is how I know the walk is done. I do not keep
+        # paging until MAX_PAGES once the repo has no more to give.
         if not data:
             break
         pull_requests.extend(data)
@@ -77,10 +92,12 @@ def get_pull_request_detail(repo, number):
 
 
 def get_pull_request_data(repo, pull_request):
-    # closed_by is present but null on a pull request nobody closed, and
-    # dict.get with a {} default does not cover an explicit null, which is
-    # why this uses "or {}" instead.
+    # I use "or {}" here and not .get with a {} default. The closed_by
+    # key is present but null on a pull request nobody closed, and a
+    # default only helps when the key is missing entirely.
     user_closed = (pull_request.get("closed_by") or {}).get("login")
+    # I fetch the detail record after I read the list fields because
+    # the count fields I need only exist on that second request.
     detail = get_pull_request_detail(repo, pull_request["number"])
     return (
         pull_request["number"],
@@ -99,8 +116,15 @@ def main():
     filename = input("Enter the name of the CSV file: ")
     try:
         pull_requests = get_pull_requests(repo)
+        # I pass newline="" because the csv module wants to control
+        # line endings itself. Without it the file gets blank rows on
+        # some platforms.
         with open(filename, "w", newline="") as csvfile:
             writer = csv.writer(csvfile)
+            # I keep this header order matched to the tuple order in
+            # get_pull_request_data. The csv writer does no checking,
+            # so a drift between the two would mislabel every column
+            # without raising anything.
             writer.writerow(["PR Number", "Date Opened", "Date Closed",
                              "User Opened", "User Closed", "Status",
                              "Number of Comments", "Number of Files Changed"])
@@ -108,6 +132,9 @@ def main():
                 writer.writerow(get_pull_request_data(repo, pull_request))
         print(f"Data from pull requests in repository {repo} has been saved to {filename}.")
     except Exception as exc:
+        # I catch broadly here because this is an interactive tool. I
+        # would rather print one plain error line than dump a traceback
+        # on the person who typed the repo name.
         print(f"An error occurred: {exc}")
 
 

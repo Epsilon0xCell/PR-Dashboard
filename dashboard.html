@@ -36,10 +36,15 @@
   </table>
 
   <script>
-    const repoOwner = 'Epsilon0xCell'; // The account this repo now lives under
+    const repoOwner = 'Epsilon0xCell'; // I point this at the account this repo lives under now
     const repoName = 'PR-Dashboard';
 
-    // Fetch pull requests (both open and closed) from the GitHub API
+    // I fetch both open and closed pull requests with state=all. If I
+    // left that off, the API would only send the open ones and the
+    // table would look complete while quietly missing most of its rows.
+    // I also know this fetch has no paging, so I only ever show the
+    // first page the API returns. I accept that limit for a simple
+    // standalone page with no build step and no token.
     fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/pulls?state=all`)
       .then(response => response.json())
       .then(pullRequests => {
@@ -47,12 +52,13 @@
 
         pullRequests.forEach(pullRequest => {
           const row = document.createElement('tr');
-          // Cells are filled with textContent, never innerHTML. A pull
+          // I fill cells with textContent and never innerHTML. A pull
           // request title is text anyone on GitHub can choose, and this
-          // page's own workflow opens pull requests automatically, so
-          // building rows as HTML strings would let a crafted title inject
-          // markup into the dashboard. The link cell is the one place an
-          // element is built, and its href comes from the API response.
+          // repo has a workflow that opens pull requests on its own, so
+          // if I built rows as HTML strings a crafted title could put
+          // markup into my page. The link cell is the one place where I
+          // do build an element, and I take its href from the API
+          // response instead of from anything a viewer typed.
           const cells = [
             pullRequest.number,
             pullRequest.title,
@@ -69,6 +75,8 @@
           const link = document.createElement('a');
           link.href = pullRequest.html_url;
           link.target = '_blank';
+          // I set noopener because the link opens in a new tab. Without
+          // it the opened page could reach back to this window.
           link.rel = 'noopener';
           link.textContent = 'Link';
           linkCell.appendChild(link);
@@ -77,6 +85,9 @@
         });
       })
       .catch(error => {
+        // I only log a fetch failure to the console. The table stays
+        // empty, which I accept here rather than guessing at a message
+        // to show a viewer who may just be offline or rate limited.
         console.error('Error fetching pull requests:', error);
       });
   </script>
