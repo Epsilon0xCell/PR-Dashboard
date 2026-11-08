@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PR-Dashboard: the order rail</title>
+<style>
+@font-face{font-family:"Barlow Semi Condensed";src:url("fonts/BarlowSemiCondensed-SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
+@font-face{font-family:"Barlow Semi Condensed";src:url("fonts/BarlowSemiCondensed-Bold.ttf") format("truetype");font-weight:700;font-display:swap}
+@font-face{font-family:"Barlow";src:url("fonts/Barlow-Regular.ttf") format("truetype");font-weight:400;font-display:swap}
+@font-face{font-family:"Barlow";src:url("fonts/Barlow-Bold.ttf") format("truetype");font-weight:700;font-display:swap}
+:root{--steel:#5c6670;--dark:#23272b;--paper:#fdfaf2;--red:#b3312a;--purple:#6a3fa0;--line:#d8d2c2}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#ece7da;color:#26221b;font-family:"Barlow",Arial,sans-serif;line-height:1.6}
+header{max-width:1080px;margin:0 auto;padding:2.4rem 1.2rem .4rem;text-align:center}
+header img.logo{width:150px;height:150px;border:3px solid var(--steel);border-radius:6px;box-shadow:0 5px 16px rgba(35,39,43,.3)}
+h1{font-family:"Barlow Semi Condensed",sans-serif;font-weight:700;letter-spacing:.02em;font-size:clamp(2.3rem,5.5vw,3.5rem);color:var(--dark);text-transform:uppercase;margin-top:1rem}
+h1 span{color:var(--red)}
+header p{max-width:46rem;margin:.5rem auto 0;color:#57503f}
+figure{max-width:1080px;margin:1.4rem auto 0;padding:0 1.2rem}
+figure img{width:100%;border:3px solid var(--steel);border-radius:4px}
+main{max-width:1080px;margin:0 auto;padding:1rem 1.2rem 3rem}
+section{margin-top:1.5rem;background:var(--paper);border:1px solid var(--line);border-top:6px solid var(--steel);border-radius:4px;padding:1.3rem 1.4rem}
+h2{font-family:"Barlow Semi Condensed",sans-serif;font-weight:600;font-size:1.7rem;text-transform:uppercase;letter-spacing:.03em;color:var(--dark);margin-bottom:.5rem}
+h3{font-family:"Barlow Semi Condensed",sans-serif;font-weight:600;font-size:1.3rem;color:var(--red);margin:.9rem 0 .3rem}
+p{margin:.45rem 0}
+code{font-family:ui-monospace,Menlo,monospace;font-size:.92em;background:#efe9d8;padding:.05rem .35rem;border-radius:3px}
+ul{margin:.4rem 0 .4rem 1.3rem}
+li{margin:.28rem 0}
+.stamp{display:inline-block;border:3px solid var(--purple);color:var(--purple);border-radius:50%;width:92px;height:92px;line-height:86px;text-align:center;font-family:"Barlow Semi Condensed",sans-serif;font-weight:700;transform:rotate(-10deg);font-size:1.05rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;margin-top:.6rem}
+.grid div{border:1px dashed #b6ae97;border-radius:4px;padding:.9rem 1rem;background:#fffdf6}
+.grid b{color:var(--dark)}
+footer{border-top:4px solid var(--red);padding:1.2rem;text-align:center;color:#6d6450;font-size:.95rem}
+footer img{max-width:820px;width:100%;border:3px solid var(--steel);border-radius:4px}
+</style>
+</head>
+<body>
+<header>
+<img class="logo" src="assets/logo.png" alt="PR-Dashboard logo: a steel order rail holding one white lined ticket clipped at its center, a purple stamped circle on the ticket corner">
+<h1>PR-Dashboard: <span>the order rail</span></h1>
+<p>Every pull request is a ticket on the rail. This repository keeps the
+count current, clips the open ones up where they can be seen, and stamps
+the finished ones off the line.</p>
+</header>
+<figure><img src="assets/intro-banner.png" alt="A hand taking the last ticket down from the order rail, its purple stamp fresh, the rail behind it empty"></figure>
+<main>
+<section>
+<h2>What is on the rail</h2>
+<p><strong>PR-Dashboard</strong> tracks the pull requests of the
+Epsilon0xCell account. A scheduled workflow keeps a running counter in
+<code>status.md</code> and in <code>main.py</code> itself, and
+<code>dashboard.html</code> reads the live state of the account's pull
+requests straight from the GitHub API.</p>
+<p style="text-align:center;margin:1rem 0"><span class="stamp">COUNTED</span></p>
+</section>
+<section>
+<h2>The pieces</h2>
+<div class="grid">
+<div><b>main.py</b><p>The counter. A GitHub Actions workflow advances its
+number each time a pull request is merged, so the file itself carries the
+running total of merged work.</p></div>
+<div><b>status.md</b><p>The same count, kept in step by the scheduled
+workflow: one line that always answers how many pull requests have been
+merged.</p></div>
+<div><b>dashboard.html</b><p>A self contained page that fetches this
+account's pull requests from the GitHub API and lays them out in a table:
+number, title, repository, state, and dates.</p></div>
+<div><b>pull-request-check.py</b><p>An interactive checker: give it a
+repository and it walks the pull requests, printing each one's number,
+title, author, state, comment count, and changed file count, and can
+export the walk to CSV.</p></div>
+</div>
+</section>
+<section>
+<h2>How the rail stays current</h2>
+<ul>
+<li>Two workflows live under <code>.github/workflows</code>:
+<code>update.yaml</code> runs on a schedule and on merged pull requests to
+advance the counter, and <code>merge.yml</code> supports the merge side of
+the line.</li>
+<li>The counter lives in the code and in <code>status.md</code> together,
+so the number is readable without running anything.</li>
+<li><code>PR.png</code> in the repository is the product screenshot of the
+dashboard itself.</li>
+</ul>
+<h3>Reading the tickets</h3>
+<p>Open pull requests are the tickets still clipped to the rail; merged
+ones are stamped and taken down. The dashboard page shows both kinds as
+the API reports them, so what you see is the account's real queue, not a
+snapshot.</p>
+</section>
+</main>
+<footer>
+<img src="assets/banner.png" alt="A long steel order rail across a diner pass with red tiles behind, white tickets clipped in a row, the tickets toward the right bearing purple stamp marks while the newest at the left are still blank">
+<p>PR-Dashboard, the order rail. Artwork: diner order ticket rail
+photography in ticket white, rail steel, and diner red, with one stamp
+purple. Fonts: Barlow Semi Condensed for headings and Barlow for text,
+self hosted under the SIL Open Font License.</p>
+</footer>
+</body>
+</html>
